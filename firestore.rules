@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Connection Test Health Check
+    match /test/{testId} {
+      allow read: if true;
+    }
+
+    // Common Security Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // User Root Document & Profile
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // Allow owner read and write to all subcollections
+      match /{allSubcollections=**} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Explicit collections definitions
+      match /habits/{habitId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /dailyLogs/{logId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /scheduleItems/{scheduleItemId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /challenges/{challengeId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /userStats/{statsId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /settings/{settingsId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+}

@@ -1,0 +1,146 @@
+{
+  "entities": {
+    "Habit": {
+      "title": "Habit or Task",
+      "description": "Represents a user habit or one-time task",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 500 },
+        "type": { "type": "string", "enum": ["simple", "numeric", "timer"] },
+        "isTask": { "type": "boolean" },
+        "emoji": { "type": "string", "maxLength": 10 },
+        "color": { "type": "string", "maxLength": 50 },
+        "category": { "type": "string", "maxLength": 50 },
+        "frequency": { "type": "string", "enum": ["daily", "weekly", "specific"] },
+        "targetFrequencyDays": { "type": "number" },
+        "frequencyDays": { "type": "array" },
+        "targetValue": { "type": "number" },
+        "unit": { "type": "string", "maxLength": 30 },
+        "targetMinutes": { "type": "number" },
+        "alarmTime": { "type": "string", "maxLength": 10 },
+        "alarmEnabled": { "type": "boolean" },
+        "alarmSound": { "type": "string", "maxLength": 50 },
+        "order": { "type": "number" },
+        "subtasks": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "dueDate": { "type": "string", "maxLength": 10 },
+        "isArchived": { "type": "boolean" }
+      },
+      "required": ["id", "userId", "name", "type", "isTask", "emoji", "color", "category", "frequency", "order", "createdAt", "isArchived"]
+    },
+    "DailyLog": {
+      "title": "Daily Completion Log",
+      "description": "Daily progress tracking for habits",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "habitId": { "type": "string" },
+        "date": { "type": "string", "maxLength": 10 },
+        "completed": { "type": "boolean" },
+        "value": { "type": "number" },
+        "completedSubtasks": { "type": "array" }
+      },
+      "required": ["id", "userId", "habitId", "date", "completed"]
+    },
+    "ScheduleItem": {
+      "title": "Schedule Routine Item",
+      "description": "Scheduled time markers for daily routines",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string", "maxLength": 100 },
+        "time": { "type": "string", "maxLength": 10 },
+        "days": { "type": "array" },
+        "category": { "type": "string", "maxLength": 50 },
+        "emoji": { "type": "string", "maxLength": 10 },
+        "alarmEnabled": { "type": "boolean" },
+        "alarmSound": { "type": "string", "maxLength": 50 },
+        "habitId": { "type": "string" },
+        "subtaskId": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "time", "category", "emoji", "alarmEnabled", "alarmSound"]
+    },
+    "DayChallenge": {
+      "title": "Challenge Blueprint",
+      "description": "30-day challenge progress",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 500 },
+        "startDate": { "type": "string", "maxLength": 10 },
+        "days": { "type": "array" },
+        "category": { "type": "string", "maxLength": 50 },
+        "emoji": { "type": "string", "maxLength": 10 },
+        "color": { "type": "string", "maxLength": 50 },
+        "isCustom": { "type": "boolean" }
+      },
+      "required": ["id", "userId", "name", "description", "days", "category", "emoji", "color"]
+    },
+    "UserStats": {
+      "title": "User Profile Statistics",
+      "description": "Coins, badges, and user stats",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "coins": { "type": "number" },
+        "lastCheckInDate": { "type": "string", "maxLength": 10 },
+        "unlockedBadges": { "type": "array" },
+        "userName": { "type": "string", "maxLength": 100 },
+        "onboardingCompleted": { "type": "boolean" },
+        "customCategories": { "type": "array" }
+      },
+      "required": ["userId", "coins", "unlockedBadges", "userName", "onboardingCompleted", "customCategories"]
+    },
+    "AppSettings": {
+      "title": "Application Preferences",
+      "description": "Theme and sound settings",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "appAccent": { "type": "string", "enum": ["emerald", "indigo", "rose", "amber", "cyan"] },
+        "theme": { "type": "string", "enum": ["light", "dark"] },
+        "muteSounds": { "type": "boolean" },
+        "weekStartMonday": { "type": "boolean" },
+        "requireAllSubtasksComplete": { "type": "boolean" }
+      },
+      "required": ["userId", "appAccent", "theme", "muteSounds", "weekStartMonday", "requireAllSubtasksComplete"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserStats",
+      "description": "User root document containing general stats"
+    },
+    "/users/{userId}/habits/{habitId}": {
+      "schema": "Habit",
+      "description": "Habits collection for user"
+    },
+    "/users/{userId}/dailyLogs/{logId}": {
+      "schema": "DailyLog",
+      "description": "Daily completion logs collection"
+    },
+    "/users/{userId}/scheduleItems/{scheduleItemId}": {
+      "schema": "ScheduleItem",
+      "description": "Schedule items collection"
+    },
+    "/users/{userId}/challenges/{challengeId}": {
+      "schema": "DayChallenge",
+      "description": "30-Day challenges collection"
+    },
+    "/users/{userId}/userStats/{statsId}": {
+      "schema": "UserStats",
+      "description": "Detailed stats collection"
+    },
+    "/users/{userId}/settings/{settingsId}": {
+      "schema": "AppSettings",
+      "description": "User settings collection"
+    }
+  }
+}

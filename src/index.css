@@ -1,0 +1,470 @@
+@import "tailwindcss";
+
+/* Custom simple fadeIn animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* =========================================================
+   LIGHT MODE STYLING & ADAPTIVE THEME OVERRIDES
+   Creamy White Theme Mode: warm ivory canvas (#FAF8F5),
+   soft creamy surfaces, warm stone typography & subtle borders
+   ========================================================= */
+
+.light {
+  color-scheme: light;
+  background-color: #FAF8F5 !important;
+  color: #1C1917 !important;
+}
+
+/* Base and canvas backgrounds in creamy white light mode */
+.light .bg-slate-950 {
+  background-color: #FAF8F5 !important;
+}
+.light .bg-slate-950\/80,
+.light .bg-slate-950\/90 {
+  background-color: rgba(250, 248, 245, 0.92) !important;
+}
+.light .bg-slate-950\/70,
+.light .bg-slate-950\/60,
+.light .bg-slate-950\/40 {
+  background-color: rgba(244, 239, 230, 0.88) !important;
+}
+
+/* Elevated cards in creamy white light mode */
+.light .bg-slate-900 {
+  background-color: #FFFFFF !important;
+  border-color: #EBE5DA !important;
+  box-shadow: 0 1px 3px 0 rgba(41, 37, 36, 0.04), 0 1px 2px -1px rgba(41, 37, 36, 0.03);
+}
+.light .bg-slate-900\/95,
+.light .bg-slate-900\/90,
+.light .bg-slate-900\/85,
+.light .bg-slate-900\/80 {
+  background-color: rgba(255, 255, 255, 0.98) !important;
+  border-color: #EBE5DA !important;
+}
+.light .bg-slate-900\/60,
+.light .bg-slate-900\/50,
+.light .bg-slate-900\/40 {
+  background-color: #F8F5EE !important;
+  border-color: #EBE5DA !important;
+}
+.light .bg-slate-850,
+.light .bg-slate-800 {
+  background-color: #F4EFE6 !important;
+  border-color: #E6DFD2 !important;
+}
+
+/* Header and navigation in creamy white light mode */
+.light #habitflow-main-header {
+  background-color: rgba(250, 248, 245, 0.92) !important;
+  border-color: #EBE5DA !important;
+}
+.light #habitflow-bottom-nav {
+  background-color: rgba(255, 253, 250, 0.95) !important;
+  border-color: #EBE5DA !important;
+  box-shadow: 0 -4px 12px rgba(41, 37, 36, 0.04);
+}
+.light #habitflow-bottom-nav button:not([class*="text-indigo"]):not([class*="text-emerald"]):not([class*="text-rose"]):not([class*="text-amber"]):not([class*="text-cyan"]) {
+  color: #78716C !important;
+}
+
+/* Borders in creamy white light mode */
+.light .border-slate-950,
+.light .border-slate-900,
+.light .border-slate-850,
+.light .border-slate-800 {
+  border-color: #EBE5DA !important;
+}
+.light .border-slate-700 {
+  border-color: #DDD5C7 !important;
+}
+
+/* Typography in creamy white light mode - warm stone palette for harmonious contrast */
+.light .text-white {
+  color: #1C1917 !important;
+}
+.light .text-slate-100 {
+  color: #1C1917 !important;
+}
+.light .text-slate-200 {
+  color: #292524 !important;
+}
+.light .text-slate-300 {
+  color: #44403C !important;
+}
+.light .text-slate-400 {
+  color: #57534E !important;
+}
+.light .text-slate-500 {
+  color: #78716C !important;
+}
+.light .text-slate-600 {
+  color: #A8A29E !important;
+}
+
+/* High contrast colored texts in creamy white light mode */
+.light .text-indigo-400,
+.light .text-indigo-300 {
+  color: #4338CA !important;
+}
+.light .text-emerald-400,
+.light .text-emerald-300 {
+  color: #047857 !important;
+}
+.light .text-amber-400,
+.light .text-amber-300 {
+  color: #B45309 !important;
+}
+.light .text-rose-400,
+.light .text-rose-300 {
+  color: #BE123C !important;
+}
+.light .text-cyan-400,
+.light .text-cyan-300 {
+  color: #0E7490 !important;
+}
+.light .text-amber-200 {
+  color: #92400E !important;
+}
+
+/* Solid action buttons and badges preserve crisp white text */
+.light .bg-indigo-600,
+.light .bg-indigo-600 *,
+.light .bg-indigo-500,
+.light .bg-indigo-500 *,
+.light .bg-emerald-600,
+.light .bg-emerald-600 *,
+.light .bg-emerald-500,
+.light .bg-emerald-500 *,
+.light .bg-amber-600,
+.light .bg-amber-600 *,
+.light .bg-amber-500,
+.light .bg-amber-500 *,
+.light .bg-rose-600,
+.light .bg-rose-600 *,
+.light .bg-rose-500,
+.light .bg-rose-500 *,
+.light .bg-cyan-600,
+.light .bg-cyan-600 *,
+.light .bg-violet-600,
+.light .bg-violet-600 * {
+  color: #FFFFFF !important;
+}
+
+/* Soft badge background adjustments in creamy white light mode */
+.light .bg-indigo-950,
+.light .bg-indigo-950\/40,
+.light .bg-indigo-950\/50 {
+  background-color: #EEF2FF !important;
+  color: #3730A3 !important;
+  border-color: #C7D2FE !important;
+}
+.light .bg-emerald-950,
+.light .bg-emerald-950\/40,
+.light .bg-emerald-950\/50 {
+  background-color: #ECFDF5 !important;
+  color: #065F46 !important;
+  border-color: #A7F3D0 !important;
+}
+.light .bg-amber-950,
+.light .bg-amber-950\/40,
+.light .bg-amber-950\/50 {
+  background-color: #FEF3C7 !important;
+  color: #78350F !important;
+  border-color: #FDE68A !important;
+}
+.light .bg-rose-950,
+.light .bg-rose-950\/40,
+.light .bg-rose-950\/50 {
+  background-color: #FFE4E6 !important;
+  color: #9F1239 !important;
+  border-color: #FECDD3 !important;
+}
+
+/* Hover background states in creamy white light mode */
+.light .hover\:bg-slate-800:hover,
+.light .hover\:bg-slate-850:hover,
+.light .hover\:bg-slate-900:hover {
+  background-color: #EFE9DE !important;
+}
+.light .hover\:bg-slate-950:hover {
+  background-color: #F6F1E7 !important;
+}
+.light .hover\:text-white:hover {
+  color: #1C1917 !important;
+}
+
+/* Form inputs in creamy white light mode */
+.light input:not([type="checkbox"]):not([type="radio"]),
+.light textarea,
+.light select {
+  background-color: #FFFFFF !important;
+  color: #1C1917 !important;
+  border-color: #DDD5C7 !important;
+}
+.light input::placeholder,
+.light textarea::placeholder {
+  color: #A8A29E !important;
+}
+
+/* Gemini Command gradient in creamy white light mode */
+.light .bg-gradient-to-br.from-indigo-950 {
+  background: linear-gradient(135deg, #FAF6EE 0%, #F4ECE0 50%, #FFFFFF 100%) !important;
+  border-color: #E5DCce !important;
+}
+.light .bg-gradient-to-br.from-indigo-950 h2,
+.light .bg-gradient-to-br.from-indigo-950 h3,
+.light .bg-gradient-to-br.from-indigo-950 p {
+  color: #1C1917 !important;
+}
+
+/* Modal backdrops in creamy white light mode */
+.light .fixed.inset-0.bg-black\/75,
+.light .fixed.inset-0.bg-black\/70,
+.light .fixed.inset-0.bg-black\/80 {
+  background-color: rgba(28, 25, 23, 0.45) !important;
+}
+
+/* Scrollbars in creamy white light mode */
+.light ::-webkit-scrollbar-thumb {
+  background: #DDD5C7;
+}
+.light ::-webkit-scrollbar-thumb:hover {
+  background: #A8A29E;
+}
+
+/* =========================================================
+   SCHEDULE SECTION LIGHT MODE ENHANCEMENTS
+   High-contrast cards, crisp typography, distinct badges,
+   and clear interactive alarm controls
+   ========================================================= */
+
+/* Main task cards in schedule view */
+.light #schedule-view-main .schedule-task-card {
+  background-color: #FFFFFF !important;
+  border-color: #E2D9C8 !important;
+  box-shadow: 0 1px 3px 0 rgba(41, 37, 36, 0.05), 0 1px 2px -1px rgba(41, 37, 36, 0.03) !important;
+}
+.light #schedule-view-main .schedule-task-card:hover {
+  border-color: #A5B4FC !important;
+  box-shadow: 0 4px 12px 0 rgba(99, 102, 241, 0.08) !important;
+}
+
+/* Schedule Category Badges */
+.light #schedule-view-main .schedule-category-badge {
+  background-color: #EEF2FF !important;
+  color: #3730A3 !important;
+  border-color: #C7D2FE !important;
+  font-weight: 800 !important;
+}
+
+/* Schedule Status Badges */
+.light #schedule-view-main .schedule-status-ringing {
+  background-color: #ECFDF5 !important;
+  color: #065F46 !important;
+  border-color: #A7F3D0 !important;
+}
+.light #schedule-view-main .schedule-status-upcoming {
+  background-color: #F5F3FF !important;
+  color: #4338CA !important;
+  border-color: #DDD6FE !important;
+}
+.light #schedule-view-main .schedule-status-passed {
+  background-color: #F5EFE6 !important;
+  color: #78716C !important;
+  border-color: #E2D9C8 !important;
+}
+
+/* Schedule Repeat Day Badges */
+.light #schedule-view-main .schedule-day-badge {
+  background-color: #EDE6D8 !important;
+  color: #1C1917 !important;
+  border-color: #D6CBBA !important;
+}
+
+/* Schedule Emoji Box */
+.light #schedule-view-main .schedule-emoji-box {
+  background-color: #F7F2E8 !important;
+  border-color: #E2D9C8 !important;
+}
+
+/* Schedule Sound Selector dropdown */
+.light #schedule-view-main .schedule-sound-select {
+  background-color: #FAF8F5 !important;
+  border-color: #DDD5C7 !important;
+  color: #1C1917 !important;
+}
+.light #schedule-view-main .schedule-sound-select:hover {
+  border-color: #A8A29E !important;
+}
+.light #schedule-view-main .schedule-sound-select option {
+  background-color: #FFFFFF !important;
+  color: #1C1917 !important;
+}
+
+/* Schedule Alarm Toggle Button */
+.light #schedule-view-main .schedule-alarm-toggle.alarm-active {
+  background-color: #ECFDF5 !important;
+  border-color: #6EE7B7 !important;
+  color: #047857 !important;
+}
+.light #schedule-view-main .schedule-alarm-toggle.alarm-inactive {
+  background-color: #FAF8F5 !important;
+  border-color: #DDD5C7 !important;
+  color: #78716C !important;
+}
+.light #schedule-view-main .schedule-alarm-toggle.alarm-inactive:hover {
+  background-color: #F2ECE1 !important;
+  color: #1C1917 !important;
+}
+
+/* Schedule Delete Button */
+.light #schedule-view-main .schedule-delete-btn {
+  background-color: #FAF8F5 !important;
+  border-color: #DDD5C7 !important;
+  color: #78716C !important;
+}
+.light #schedule-view-main .schedule-delete-btn:hover {
+  background-color: #FFE4E6 !important;
+  border-color: #FECDD3 !important;
+  color: #BE123C !important;
+}
+
+/* Schedule Muted Tag */
+.light #schedule-view-main .schedule-muted-badge {
+  background-color: #F4EFE6 !important;
+  color: #78716C !important;
+  border-color: #DDD5C7 !important;
+}
+
+/* Schedule Header Action Buttons */
+.light #schedule-view-main .schedule-header-btn {
+  background-color: #FAF8F5 !important;
+  border-color: #DDD5C7 !important;
+  color: #1C1917 !important;
+}
+.light #schedule-view-main .schedule-header-btn:hover {
+  background-color: #F4EFE6 !important;
+  border-color: #C7BFB0 !important;
+}
+.light #schedule-view-main .schedule-header-btn.ai-tools-active {
+  background-color: #FEF3C7 !important;
+  border-color: #FCD34D !important;
+  color: #92400E !important;
+}
+.light #schedule-view-main .schedule-header-btn.chime-tester-active {
+  background-color: #ECFDF5 !important;
+  border-color: #6EE7B7 !important;
+  color: #047857 !important;
+}
+
+/* Sound Tester Chips */
+.light #schedule-view-main .schedule-sound-chip {
+  background-color: #FAF8F5 !important;
+  border-color: #DDD5C7 !important;
+  color: #1C1917 !important;
+}
+.light #schedule-view-main .schedule-sound-chip:hover {
+  background-color: #F2ECE1 !important;
+  border-color: #A8A29E !important;
+}
+.light #schedule-view-main .schedule-sound-chip.chip-playing {
+  background-color: #ECFDF5 !important;
+  border-color: #6EE7B7 !important;
+  color: #047857 !important;
+}
+
+/* AI Coaching Stat Cards */
+.light #schedule-view-main .coach-stat-card {
+  background-color: #FAF8F5 !important;
+  border-color: #E2D9C8 !important;
+}
+
+/* AI Attachment card */
+.light #schedule-attach-file-card {
+  background-color: #FFFDF9 !important;
+  border-color: #FCD34D !important;
+}
+
+/* Timeline headers */
+.light .schedule-timeline-title {
+  color: #44403C !important;
+}
+.light .schedule-timeline-subtitle {
+  color: #78716C !important;
+}
+.light .schedule-alarm-counter {
+  background-color: #EEF2FF !important;
+  color: #4338CA !important;
+  border-color: #C7D2FE !important;
+}
+
+/* Upcoming notification bar */
+.light #upcoming-notification-bar > div {
+  background: linear-gradient(135deg, #FFFFFF 0%, #FAF6EE 50%, #FFFFFF 100%) !important;
+  border-color: #E2D9C8 !important;
+  box-shadow: 0 4px 14px rgba(41, 37, 36, 0.06) !important;
+}
+.light #upcoming-notification-bar .bg-slate-950\/60 {
+  background-color: rgba(250, 248, 245, 0.95) !important;
+  border-color: #EBE5DA !important;
+}
+
+/* Schedule Device Tune Quick Button */
+.light #schedule-view-main .schedule-device-tune-btn {
+  background-color: #FAF8F5 !important;
+  border-color: #DDD5C7 !important;
+  color: #6366F1 !important;
+}
+.light #schedule-view-main .schedule-device-tune-btn:hover {
+  background-color: #EEF2FF !important;
+  border-color: #C7D2FE !important;
+}
+
+/* Sound Selector Modal & Device Uploader in Light Mode */
+.light #sound-selector-modal > div {
+  background-color: #FFFFFF !important;
+  border-color: #E2D9C8 !important;
+}
+.light #sound-selector-modal .bg-slate-950 {
+  background-color: #FAF8F5 !important;
+  border-color: #EBE5DA !important;
+}
+.light #custom-tune-dropzone {
+  background-color: #FAF8F5 !important;
+  border-color: #DDD5C7 !important;
+}
+.light #custom-tune-dropzone:hover {
+  background-color: #F4EFE6 !important;
+  border-color: #818CF8 !important;
+}
+.light #staged-tune-dialog {
+  background-color: #FAF8F5 !important;
+  border-color: #C7D2FE !important;
+}
+
+
+

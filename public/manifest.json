@@ -1,0 +1,23 @@
+{
+  "short_name": "HabitFlow",
+  "name": "HabitFlow - Routine & Habit Planner",
+  "icons": [
+    {
+      "src": "/pwa-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/pwa-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "description": "Full-featured Android habit tracker, daily routine planner, and gamified streak system."
+}

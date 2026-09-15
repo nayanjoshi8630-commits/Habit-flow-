@@ -1,0 +1,6 @@
+{
+  "name": "HabitFlow",
+  "description": "A feature-rich habit tracker and daily routine planner with stats, calendars, custom styles, and rewards.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
