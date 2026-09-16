@@ -4,4 +4,6 @@
     <string name="title_activity_main">HabitFlow</string>
     <string name="package_name">com.habitflow.app</string>
     <string name="custom_url_scheme">com.habitflow.app</string>
+    <string name="default_web_client_id">585318434341-9q789202ho784810jj8enj7avdq0na6e.apps.googleusercontent.com</string>
 </resources>
+
