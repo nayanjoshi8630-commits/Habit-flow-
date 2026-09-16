@@ -31,7 +31,12 @@ export interface SettlementChanges {
 
 const SYSTEM_PROMPT = `You are HabitFlow's autonomous routine engine.
 Analyze the user's directive and context (habits, schedule items, date/time, logs).
-Produce structured actions to update habits, schedule items, logs, or themes.
+
+CRITICAL INSTRUCTIONS FOR ROUTINE CREATION:
+When a user asks to "make a schedule", "create a routine", "plan my day", or similar:
+1. ALWAYS generate CREATE_HABIT actions so habits populate on their Today dashboard (e.g. Morning Workout, Deep Focus, Reading, Hydration).
+2. ALSO generate ADD_SCHEDULE_ITEM actions with specific times (HH:MM 24-hr format) and days array [0,1,2,3,4,5,6] so timeline alerts populate.
+
 Return ONLY a valid JSON object matching the GeminiCommandResult interface:
 {
   "summary": "Short user-friendly summary of actions taken",
@@ -235,7 +240,7 @@ export function applyGeminiActions(
             emoji: sd.emoji || '📌',
             alarmEnabled: sd.alarmEnabled ?? true,
             alarmSound: sd.alarmSound || 'soft_chime',
-            days: sd.days && sd.days.length > 0 ? sd.days : [currentDow],
+            days: sd.days && sd.days.length > 0 ? sd.days : [0, 1, 2, 3, 4, 5, 6],
           };
           newScheduleItems.push(newItem);
         }
