@@ -47,13 +47,12 @@ export async function sendCommandToGemini(
   command: string,
   context: CommandContextPayload
 ): Promise<GeminiCommandResult> {
-  const apiKey =
-    (import.meta as any).env?.VITE_GEMINI_API_KEY ||
-    (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : '') ||
-    '';
+  const userKey = typeof window !== 'undefined' ? localStorage.getItem('habitflow_user_gemini_key') : null;
+  const envKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
+  const apiKey = userKey || envKey;
 
   if (!apiKey) {
-    throw new Error('Gemini API key is not configured. Please set VITE_GEMINI_API_KEY.');
+    throw new Error('Gemini API key is not configured. Please set your key.');
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -84,7 +83,7 @@ export async function sendCommandToGemini(
   };
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3.6-flash',
     contents: JSON.stringify(contextPayload),
     config: {
       systemInstruction: SYSTEM_PROMPT,
