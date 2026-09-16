@@ -30,6 +30,8 @@ jobs:
         run: npm install
 
       - name: Build Web Application
+        env:
+          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
         run: npm run build
 
       - name: Sync Capacitor Android
@@ -81,3 +83,4 @@ jobs:
             2. Open the file on your Android device and confirm installation (*Allow installation from unknown sources* if prompted).
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
