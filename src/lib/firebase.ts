@@ -8,7 +8,7 @@ import {
   getAuth, 
   GoogleAuthProvider, 
   signInWithPopup, 
-  signInWithCredential,
+  signInWithCredential, 
   signOut as firebaseSignOut, 
   onAuthStateChanged,
   User 
@@ -105,7 +105,9 @@ export async function signInWithGoogle() {
   try {
     if (Capacitor.isNativePlatform()) {
       // Native Android / iOS Flow
-      const result = await FirebaseAuthentication.signInWithGoogle();
+      const result = await FirebaseAuthentication.signInWithGoogle({
+        serverClientId: '585318434341-9q789202ho7848l0jj8enj7avdq0na6e.apps.googleusercontent.com',
+      });
       const idToken = result.credential?.idToken;
       
       if (!idToken) {
@@ -158,3 +160,4 @@ export async function logOut() {
 }
 
 export { onAuthStateChanged, type User };
+
