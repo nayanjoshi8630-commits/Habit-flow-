@@ -138,7 +138,7 @@ export default function App() {
     subtaskId?: string;
   } | null>(null);
   
-  const [snoozedAlarms, setSnoozedAlarms] = useState<{ [id: string]: number }>({}); // Timestamp when snooze expires
+  const [snoozedAlarms, setSnoozedAlarms] = useState<{ [id: string]: number }>({});
   const lastAlarmCheckedMinute = useRef<string>('');
 
   // Save Schedule Items to LocalStorage and Firestore
@@ -164,8 +164,7 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
-
-  // Real-time Firestore synchronization when user is authenticated
+    // Real-time Firestore synchronization when user is authenticated
   useEffect(() => {
     if (!currentUser) return;
 
@@ -200,7 +199,6 @@ export default function App() {
       try {
         const parsed = JSON.parse(rawData) as HabitFlowState;
         
-        // Backwards compatibility safety checks
         const sanitState: HabitFlowState = {
           habits: parsed.habits || [],
           dailyLogs: parsed.dailyLogs || {},
@@ -254,7 +252,6 @@ export default function App() {
       const todayStr = now.toISOString().split('T')[0];
       const dow = now.getDay();
 
-      // Prevent triggering repeatedly inside the same minute
       if (lastAlarmCheckedMinute.current === currentTimeStr) return;
 
       // 1. Scan Schedule Items
@@ -264,11 +261,9 @@ export default function App() {
           const isActiveDay = !item.days || item.days.includes(dow);
           if (!isActiveDay) continue;
 
-          // Check snooze
           const snoozeExpiry = snoozedAlarms[item.id];
           if (snoozeExpiry && Date.now() < snoozeExpiry) continue;
 
-          // Trigger alarm!
           lastAlarmCheckedMinute.current = currentTimeStr;
           setActiveAlarm({
             id: item.id,
@@ -301,7 +296,6 @@ export default function App() {
 
         if (!isScheduledToday) continue;
 
-        // Habit-level alarm check
         if (h.alarmEnabled && h.alarmTime === currentTimeStr) {
           const alarmKey = `habit_${h.id}`;
           const snoozeExpiry = snoozedAlarms[alarmKey];
@@ -323,7 +317,6 @@ export default function App() {
           }
         }
 
-        // Subtasks check
         for (const sub of h.subtasks) {
           if (sub.reminderTime === currentTimeStr && sub.reminderEnabled) {
             const logId = `${h.id}_${todayStr}`;
@@ -364,7 +357,6 @@ export default function App() {
     state.settings.muteSounds,
   ]);
 
-  // Handle continuous alarm ringing while activeAlarm popup is visible
   const [alarmMuted, setAlarmMuted] = useState(false);
 
   useEffect(() => {
@@ -378,15 +370,12 @@ export default function App() {
       stopContinuousAlarm();
     };
   }, [activeAlarm, state.settings.muteSounds, alarmMuted]);
-
-
-  // State modification actions passed to sub views
+    // State modification actions passed to sub views
   const handleOnboardingComplete = (data: {
     userName: string;
     appAccent: 'emerald' | 'indigo' | 'rose' | 'amber' | 'cyan';
     selectedTemplates: HabitTemplate[];
   }) => {
-    // Construct starter habits from selected templates
     const createdHabits: Habit[] = data.selectedTemplates.map((temp, index) => {
       const hId = Math.random().toString(36).substring(2, 9);
       const subtasks = temp.subtaskNames.map((name, sIdx) => ({
@@ -450,7 +439,6 @@ export default function App() {
 
   const handleCreateOrUpdateHabit = (habitData: Omit<Habit, 'order' | 'createdAt'> & { id?: string }) => {
     if (habitData.id) {
-      // Edit mode
       let savedHabit: Habit | null = null;
       const updatedHabits = state.habits.map((h) => {
         if (h.id === habitData.id) {
@@ -467,7 +455,6 @@ export default function App() {
         syncHabitToFirestore(currentUser.uid, savedHabit);
       }
     } else {
-      // Creation mode
       const newHabit: Habit = {
         ...habitData,
         id: Math.random().toString(36).substring(2, 9),
@@ -488,7 +475,6 @@ export default function App() {
   };
 
   const handleDeleteHabit = (id: string) => {
-    // Delete habit and any referenced logs belonging to it
     const updatedHabits = state.habits.filter((h) => h.id !== id);
     const updatedLogs = { ...state.dailyLogs };
     for (const logKey in updatedLogs) {
@@ -513,7 +499,6 @@ export default function App() {
       name: `${habit.name} (Copy)`,
       order: state.habits.length,
       createdAt: new Date().toISOString(),
-      // copy subtasks with new IDs
       subtasks: habit.subtasks.map((sub, sIdx) => ({
         ...sub,
         id: `sub_dup_${sIdx}_${Math.random().toString(36).substring(2, 5)}`,
@@ -565,7 +550,6 @@ export default function App() {
     });
   };
 
-  // Data management routines
   const handleExportData = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
     const downloadAnchor = document.createElement('a');
@@ -630,8 +614,7 @@ export default function App() {
       deleteScheduleItemFromFirestore(currentUser.uid, id);
     }
   };
-
-  // Google Authentication Actions
+    // Google Authentication Actions
   const handleSignOut = async () => {
     try {
       await logOut();
@@ -656,12 +639,14 @@ export default function App() {
     }
   };
 
+  // Autonomous Gemini State Settlement (Saves to state, LocalStorage, and syncs to Firestore)
   const handleUpdateFromGemini = (changes: {
     habits: Habit[];
     dailyLogs: Record<string, DailyLog>;
     scheduleItems: ScheduleItem[];
     theme?: 'light' | 'dark';
   }) => {
+    // 1. Update State & LocalStorage
     saveState({
       ...state,
       habits: changes.habits,
@@ -669,6 +654,20 @@ export default function App() {
       settings: changes.theme ? { ...state.settings, theme: changes.theme } : state.settings,
     });
     saveScheduleItems(changes.scheduleItems);
+
+    // 2. Cloud Firestore Sync for logged in user
+    if (currentUser) {
+      for (const h of changes.habits) {
+        syncHabitToFirestore(currentUser.uid, h);
+      }
+      for (const logId in changes.dailyLogs) {
+        syncDailyLogToFirestore(currentUser.uid, changes.dailyLogs[logId]);
+      }
+      for (const s of changes.scheduleItems) {
+        syncScheduleItemToFirestore(currentUser.uid, s);
+      }
+    }
+
     playConfetti();
   };
 
@@ -718,7 +717,6 @@ export default function App() {
             playConfetti();
           }
         } else {
-          // Complete main habit
           if (!log.completed) {
             handleUpdateLog({
               ...log,
@@ -729,7 +727,6 @@ export default function App() {
         }
       }
     } else {
-      // General Schedule Item complete
       playConfetti();
     }
 
@@ -738,7 +735,6 @@ export default function App() {
 
   const handleSnoozeAlarm = () => {
     if (!activeAlarm) return;
-    // Add 5 minutes active snooze block
     const resTimestamp = Date.now() + 5 * 60 * 1000;
     setSnoozedAlarms({
       ...snoozedAlarms,
@@ -766,11 +762,9 @@ export default function App() {
     playConfetti();
   };
 
-  // Pre-configured custom theme classes matches accent settings
   const accentTheme = COLOR_ACCENTS.find((a) => a.name === state.settings.appAccent) || COLOR_ACCENTS[1];
   const isLight = state.settings.theme === 'light';
 
-  // Synchronize document element class for background and styling
   useEffect(() => {
     if (state.settings.theme === 'light') {
       document.documentElement.classList.remove('dark');
@@ -796,7 +790,7 @@ export default function App() {
     );
   }
 
-  // 2. Google Login Screen Gating: New or unauthenticated users see Google Sign-In first
+  // 2. Google Login Screen Gating
   if (!currentUser && !guestMode) {
     return (
       <GoogleLoginView
@@ -819,7 +813,7 @@ export default function App() {
     );
   }
 
-  // 3. Onboarding Screen gating (for new users who haven't completed onboarding)
+  // 3. Onboarding Screen Gating
   if (!state.userStats.onboardingCompleted) {
     return (
       <div className={`${isLight ? 'light bg-[#FAF8F5] text-stone-900' : 'dark bg-slate-950 text-white'} min-h-screen transition-colors duration-200`}>
@@ -830,11 +824,8 @@ export default function App() {
       </div>
     );
   }
-
-  return (
+    return (
     <div className={`${isLight ? 'light bg-[#FAF8F5] text-stone-900' : 'dark bg-slate-950 text-slate-100'} min-h-screen flex flex-col justify-between overflow-x-hidden transition-colors duration-200`}>
-      
-      {/* Confetti Effects */}
       <ConfettiEffect />
 
       {/* Top Banner Dashboard header */}
@@ -924,8 +915,6 @@ export default function App() {
 
       {/* Main body viewport */}
       <main className="flex-1 w-full max-w-xl mx-auto pt-4 pb-20">
-        
-        {/* Notification Bar for Upcoming Tasks/Habits */}
         <UpcomingTaskBar
           habits={state.habits}
           dailyLogs={state.dailyLogs}
@@ -973,7 +962,7 @@ export default function App() {
           />
         )}
 
-        {/* TAB 3: Gemini Command Center (Replaced Calendar Section) */}
+        {/* TAB 3: Gemini Command Center */}
         {activeTab === 'gemini' && (
           <GeminiCommandView
             habits={state.habits}
@@ -993,7 +982,7 @@ export default function App() {
           />
         )}
 
-        {/* TAB: Statistics deep-dives & achievements badges */}
+        {/* TAB 4: Statistics */}
         {activeTab === 'stats' && (
           <StatsView
             habits={state.habits}
@@ -1001,7 +990,7 @@ export default function App() {
           />
         )}
 
-        {/* TAB 4: Core settings controls */}
+        {/* TAB 5: Settings */}
         {activeTab === 'settings' && (
           <SettingsView
             settings={state.settings}
@@ -1018,7 +1007,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Form modal backdrop */}
+      {/* Habit Form Modal */}
       {showHabitForm && (
         <HabitForm
           habitToEdit={habitToEdit}
@@ -1031,19 +1020,17 @@ export default function App() {
         />
       )}
 
-      {/* Phone-Style Continuous Alarm Full-Screen Dialog Overlay */}
+      {/* Fullscreen Alarm Modal */}
       {activeAlarm && (
         <div
           id="reminder-alarm-popup"
           className="fixed inset-0 z-50 bg-slate-950/98 backdrop-blur-md flex flex-col items-center justify-between py-10 px-6 animate-fadeIn select-none"
         >
-          {/* Animated Pulsing Ring Background */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
             <div className="w-80 h-80 rounded-full bg-rose-500/10 animate-ping" />
             <div className="w-96 h-96 rounded-full bg-indigo-500/10 animate-pulse" />
           </div>
 
-          {/* Header Time & Ring Indicator */}
           <div className="relative z-10 flex flex-col items-center gap-2 mt-4 text-center">
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-black uppercase tracking-widest animate-pulse">
               <Bell className="w-3.5 h-3.5 animate-bounce" /> Alarm Ringing Loudly
@@ -1057,7 +1044,6 @@ export default function App() {
             </span>
           </div>
 
-          {/* Alarm Details Card */}
           <div className="relative z-10 bg-slate-900/90 border border-slate-800 p-6 rounded-3xl text-center w-full max-w-sm flex flex-col items-center gap-3 shadow-2xl shadow-indigo-600/20">
             <div className="p-4 bg-slate-950 border border-slate-800 rounded-3xl text-4xl shadow-inner mb-1">
               {activeAlarm.emoji}
@@ -1071,7 +1057,6 @@ export default function App() {
               {activeAlarm.title}
             </h3>
 
-            {/* Alarm Sound details */}
             {activeAlarm.alarmSound && (
               <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-950/80 border border-slate-800 rounded-xl text-[10px] font-bold text-amber-300">
                 <span>{SoundCatalog.OPTIONS.find((s) => s.id === activeAlarm.alarmSound)?.emoji || '🎵'}</span>
@@ -1081,7 +1066,6 @@ export default function App() {
               </div>
             )}
 
-            {/* Silence Audio Toggle */}
             <button
               type="button"
               onClick={() => setAlarmMuted(!alarmMuted)}
@@ -1095,7 +1079,6 @@ export default function App() {
             </button>
           </div>
 
-          {/* Control Actions */}
           <div className="relative z-10 flex flex-col gap-3 w-full max-w-sm mb-4">
             <button
               id="alarm-btn-complete"
@@ -1132,7 +1115,6 @@ export default function App() {
       {/* Global Bottom Navigation bar */}
       <nav id="habitflow-bottom-nav" className="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/85 backdrop-blur-md border-t border-slate-900 py-3.5 px-2">
         <div className="max-w-md mx-auto grid grid-cols-5 gap-0.5">
-          {/* Nav Item 1: Today */}
           <button
             id="nav-tab-today"
             type="button"
@@ -1145,7 +1127,6 @@ export default function App() {
             <span className="text-[8px] font-extrabold uppercase tracking-wider">Today</span>
           </button>
 
-          {/* Nav Item 2: Schedule & Alarms */}
           <button
             id="nav-tab-schedule"
             type="button"
@@ -1158,7 +1139,6 @@ export default function App() {
             <span className="text-[8px] font-extrabold uppercase tracking-wider">Schedule</span>
           </button>
 
-          {/* Nav Item 3: Gemini AI Command Center (Replaces Calendar) */}
           <button
             id="nav-tab-gemini"
             type="button"
@@ -1174,7 +1154,6 @@ export default function App() {
             <span className="text-[8px] font-extrabold uppercase tracking-wider">Gemini AI</span>
           </button>
 
-          {/* Nav Item 5: Analysis */}
           <button
             id="nav-tab-stats"
             type="button"
@@ -1187,7 +1166,6 @@ export default function App() {
             <span className="text-[8px] font-extrabold uppercase tracking-wider">Stats</span>
           </button>
 
-          {/* Nav Item 6: Settings */}
           <button
             id="nav-tab-settings"
             type="button"
@@ -1202,5 +1180,6 @@ export default function App() {
         </div>
       </nav>
     </div>
-  );
+  ););
 }
+
