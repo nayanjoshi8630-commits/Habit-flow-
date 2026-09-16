@@ -16,8 +16,21 @@ interface GeminiCommandViewProps {
   habits: Habit[];
   dailyLogs: Record<string, DailyLog>;
   scheduleItems: ScheduleItem[];
-  availableCategories: string[];
+  availableCategories?: string[];
+  categoriesList?: string[];
+  challenges?: any[];
+  userName?: string;
+  activeDate?: string;
+  weekStartMonday?: boolean;
+  onUpdateFullState?: (changes: {
+    habits: Habit[];
+    dailyLogs: Record<string, DailyLog>;
+    scheduleItems: ScheduleItem[];
+    theme?: 'light' | 'dark';
+  }) => void;
   onApplyChanges?: (changes: any) => void;
+  onUpdateChallenge?: (challenge: any) => void;
+  onSelectDate?: (dateStr: string) => void;
   onThemeSwitch?: (theme: 'light' | 'dark') => void;
 }
 
@@ -145,6 +158,8 @@ export const GeminiCommandView: React.FC<GeminiCommandViewProps> = ({
   dailyLogs = {},
   scheduleItems = [],
   availableCategories = [],
+  categoriesList = [],
+  onUpdateFullState,
   onApplyChanges,
   onThemeSwitch,
 }) => {
@@ -181,6 +196,8 @@ export const GeminiCommandView: React.FC<GeminiCommandViewProps> = ({
           return acc;
         }, {} as Record<string, { completed: boolean; isOffForToday?: boolean }>);
 
+      const effectiveCategories = availableCategories.length > 0 ? availableCategories : categoriesList;
+
       const result = await sendCommandToGemini(textToRun, {
         todayDate,
         currentTime,
@@ -188,7 +205,7 @@ export const GeminiCommandView: React.FC<GeminiCommandViewProps> = ({
         habits: Array.isArray(habits) ? habits : [],
         scheduleItems: Array.isArray(scheduleItems) ? scheduleItems : [],
         todayLogs,
-        availableCategories: Array.isArray(availableCategories) ? availableCategories : [],
+        availableCategories: Array.isArray(effectiveCategories) ? effectiveCategories : [],
       });
 
       const settlements = applyGeminiActions(
@@ -198,7 +215,10 @@ export const GeminiCommandView: React.FC<GeminiCommandViewProps> = ({
         dayOfWeek
       );
 
-      if (typeof onApplyChanges === 'function') {
+      // Trigger state updates up to App.tsx
+      if (typeof onUpdateFullState === 'function') {
+        onUpdateFullState(settlements);
+      } else if (typeof onApplyChanges === 'function') {
         onApplyChanges(settlements);
       }
 
