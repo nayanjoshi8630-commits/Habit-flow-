@@ -8,6 +8,7 @@ import {
   getAuth, 
   GoogleAuthProvider, 
   signInWithPopup, 
+  signInWithCredential,
   signOut as firebaseSignOut, 
   onAuthStateChanged,
   User 
@@ -17,6 +18,8 @@ import {
   doc, 
   getDocFromServer 
 } from 'firebase/firestore';
+import { Capacitor } from '@capacitor/core';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
@@ -100,18 +103,35 @@ export async function testFirestoreConnection() {
 // Auth Helpers
 export async function signInWithGoogle() {
   try {
-    const result = await signInWithPopup(auth, googleProvider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (credential?.accessToken) {
-      cachedAccessToken = credential.accessToken;
+    if (Capacitor.isNativePlatform()) {
+      // Native Android / iOS Flow
+      const result = await FirebaseAuthentication.signInWithGoogle();
+      const idToken = result.credential?.idToken;
+      
+      if (!idToken) {
+        throw new Error('No ID token received from native Google Sign-In.');
+      }
+
+      const credential = GoogleAuthProvider.credential(idToken);
+      const userCredential = await signInWithCredential(auth, credential);
+      
+      return { user: userCredential.user, accessToken: null };
+    } else {
+      // Standard Web Flow
+      const result = await signInWithPopup(auth, googleProvider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+        cachedAccessToken = credential.accessToken;
+      }
+      return { user: result.user, accessToken: cachedAccessToken };
     }
-    return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
     if (
       error?.code === 'auth/popup-closed-by-user' ||
-      error?.code === 'auth/cancelled-popup-request'
+      error?.code === 'auth/cancelled-popup-request' ||
+      error?.message?.includes('canceled')
     ) {
-      console.info('Google Sign-In popup closed or cancelled by user.');
+      console.info('Google Sign-In closed or cancelled by user.');
       return null;
     }
     if (error?.code === 'auth/popup-blocked') {
@@ -126,6 +146,9 @@ export async function signInWithGoogle() {
 
 export async function logOut() {
   try {
+    if (Capacitor.isNativePlatform()) {
+      await FirebaseAuthentication.signOut();
+    }
     await firebaseSignOut(auth);
     cachedAccessToken = null;
   } catch (error) {
