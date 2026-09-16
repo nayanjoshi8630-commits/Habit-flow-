@@ -41,17 +41,17 @@ export const GeminiApiKeyModal: React.FC<{ onClose: () => void; onKeySaved: () =
 
   const handleSave = () => {
     const trimmed = keyInput.trim();
-    if (trimmed && !trimmed.startsWith('AIza')) {
-      setError('Key must start with "AIza..."');
+    if (!trimmed) {
+      setError('Please paste your Gemini API key.');
       return;
     }
 
-    if (trimmed) {
-      localStorage.setItem('habitflow_user_gemini_key', trimmed);
-    } else {
-      localStorage.removeItem('habitflow_user_gemini_key');
+    if (trimmed.length < 10) {
+      setError('Key appears too short. Please copy the full key.');
+      return;
     }
 
+    localStorage.setItem('habitflow_user_gemini_key', trimmed);
     setError('');
     onKeySaved();
     onClose();
@@ -107,7 +107,7 @@ export const GeminiApiKeyModal: React.FC<{ onClose: () => void; onKeySaved: () =
         <div className="space-y-2 pt-1">
           <input
             type="password"
-            placeholder="Paste key here (AIzaSy...)"
+            placeholder="Paste key here"
             value={keyInput}
             onChange={(e) => {
               setKeyInput(e.target.value);
@@ -335,4 +335,3 @@ export const GeminiCommandView: React.FC<GeminiCommandViewProps> = ({
 };
 
 export default GeminiCommandView;
-
