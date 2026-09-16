@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { GoogleGenAI } from '@google/genai';
 import {
   Habit,
   DailyLog,
@@ -28,48 +29,71 @@ export interface SettlementChanges {
   theme?: 'light' | 'dark';
 }
 
+const SYSTEM_PROMPT = `You are HabitFlow's autonomous routine engine.
+Analyze the user's directive and context (habits, schedule items, date/time, logs).
+Produce structured actions to update habits, schedule items, logs, or themes.
+Return ONLY a valid JSON object matching the GeminiCommandResult interface:
+{
+  "summary": "Short user-friendly summary of actions taken",
+  "actions": [
+    // Array of GeminiCommandAction objects (e.g. SET_HABITS_OFF_FOR_TODAY, RESUME_HABITS_FOR_TODAY, TOGGLE_HABIT_TODAY, CREATE_HABIT, DELETE_HABIT, ADD_SCHEDULE_ITEM, UPDATE_SCHEDULE_ITEM, DELETE_SCHEDULE_ITEM, DISABLE_ALARMS_FOR_TODAY, ENABLE_ALARMS, SWITCH_THEME)
+  ]
+}`;
+
 /**
- * Send natural language command to server-side Gemini endpoint
+ * Send natural language command directly to Gemini client-side
  */
 export async function sendCommandToGemini(
   command: string,
   context: CommandContextPayload
 ): Promise<GeminiCommandResult> {
-  const res = await fetch('/api/gemini-command', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      command,
-      context: {
-        todayDate: context.todayDate,
-        currentTime: context.currentTime,
-        dayOfWeek: context.dayOfWeek,
-        habits: context.habits.map((h) => ({
-          id: h.id,
-          name: h.name,
-          category: h.category,
-          isTask: h.isTask,
-          alarmTime: h.alarmTime,
-        })),
-        todayLogs: context.todayLogs,
-        scheduleItems: context.scheduleItems.map((s) => ({
-          id: s.id,
-          title: s.title,
-          time: s.time,
-          alarmEnabled: s.alarmEnabled,
-          days: s.days,
-        })),
-        availableCategories: context.availableCategories,
-      },
-    }),
-  });
+  const apiKey =
+    (import.meta as any).env?.VITE_GEMINI_API_KEY ||
+    (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : '') ||
+    '';
 
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || `Gemini command failed with status ${res.status}`);
+  if (!apiKey) {
+    throw new Error('Gemini API key is not configured. Please set VITE_GEMINI_API_KEY.');
   }
 
-  return await res.json();
+  const ai = new GoogleGenAI({ apiKey });
+
+  const contextPayload = {
+    command,
+    context: {
+      todayDate: context.todayDate,
+      currentTime: context.currentTime,
+      dayOfWeek: context.dayOfWeek,
+      habits: context.habits.map((h) => ({
+        id: h.id,
+        name: h.name,
+        category: h.category,
+        isTask: h.isTask,
+        alarmTime: h.alarmTime,
+      })),
+      todayLogs: context.todayLogs,
+      scheduleItems: context.scheduleItems.map((s) => ({
+        id: s.id,
+        title: s.title,
+        time: s.time,
+        alarmEnabled: s.alarmEnabled,
+        days: s.days,
+      })),
+      availableCategories: context.availableCategories,
+    },
+  };
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: JSON.stringify(contextPayload),
+    config: {
+      systemInstruction: SYSTEM_PROMPT,
+      responseMimeType: 'application/json',
+    },
+  });
+
+  const responseText = response.text || '{}';
+  return JSON.parse(responseText) as GeminiCommandResult;
 }
 
 /**
