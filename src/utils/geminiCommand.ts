@@ -154,7 +154,7 @@ export async function sendCommandToGemini(
       };
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: 'gemini-3.1-flash-lite',
         contents: JSON.stringify(contextPayload),
         config: {
           systemInstruction: SYSTEM_PROMPT,
@@ -197,7 +197,7 @@ export async function sendCommandToGemini(
           ? parsed.settledItems
           : actions.map((a: any) => `✨ Executed: ${a.type || 'Action'}`),
         actions,
-        modelUsed: 'gemini-3.8-flash',
+        modelUsed: 'gemini-3.1-flash-lite',
         originalCommand: command,
         timestamp: new Date().toISOString(),
       };

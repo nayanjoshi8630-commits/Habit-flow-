@@ -6,7 +6,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 let aiClient: GoogleGenAI | null = null;
 function getGeminiClient(customKey?: string): GoogleGenAI | null {
   const keyToUse = customKey || process.env.GEMINI_API_KEY;
-  if (!keyToUse) return null;
+  if (!keyToUse || keyToUse === 'MY_GEMINI_API_KEY' || keyToUse === 'YOUR_API_KEY' || keyToUse.trim() === '') return null;
   if (!customKey && aiClient) return aiClient;
   const client = new GoogleGenAI({
     apiKey: keyToUse,
@@ -21,7 +21,7 @@ function getGeminiClient(customKey?: string): GoogleGenAI | null {
 }
 
 // Preferred models in priority order as recommended by Google Gen AI SDK
-const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-3.1-flash-lite', 'gemini-3.8-flash'];
+const GEMINI_MODELS = ['gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-3.1-pro-preview'];
 
 /**
  * Helper to call Gemini models with fallback across available models
