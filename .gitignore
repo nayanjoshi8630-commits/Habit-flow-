@@ -1,3 +1,6 @@
+node_modules
+dist
+.build-outputs
 *.iml
 .gradle
 .kotlin
@@ -16,3 +19,4 @@
 local.properties
 .env
 debug.keystore
+
