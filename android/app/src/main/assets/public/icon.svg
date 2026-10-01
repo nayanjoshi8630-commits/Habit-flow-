@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="50%" stop-color="#090D16" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+    <linearGradient id="flowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818CF8" />
+      <stop offset="30%" stop-color="#6366F1" />
+      <stop offset="70%" stop-color="#06B6D4" />
+      <stop offset="100%" stop-color="#10B981" />
+    </linearGradient>
+    <linearGradient id="checkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#E0E7FF" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Squircle Base -->
+  <rect x="24" y="24" width="464" height="464" rx="112" fill="url(#bgGrad)" stroke="#1E293B" stroke-width="6" />
+
+  <!-- Outer Glow Arc -->
+  <circle cx="256" cy="256" r="160" fill="none" stroke="url(#flowGrad)" stroke-width="32" stroke-linecap="round" stroke-dasharray="820 180" transform="rotate(-45 256 256)" filter="url(#glow)" opacity="0.4" />
+
+  <!-- Flow Habit Ring -->
+  <circle cx="256" cy="256" r="160" fill="none" stroke="url(#flowGrad)" stroke-width="32" stroke-linecap="round" stroke-dasharray="800 200" transform="rotate(-45 256 256)" />
+
+  <!-- Momentum Orbit Dot -->
+  <circle cx="369" cy="143" r="22" fill="#38BDF8" filter="url(#glow)" />
+  <circle cx="369" cy="143" r="16" fill="#FFFFFF" />
+
+  <!-- Center Habit Checkmark -->
+  <path d="M190 262 L236 308 L328 206" fill="none" stroke="url(#checkGrad)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Sparkle Accent -->
+  <path d="M152 144 Q152 164 132 164 Q152 164 152 184 Q152 164 172 164 Q152 164 152 144 Z" fill="#FACC15" opacity="0.9" />
+</svg>

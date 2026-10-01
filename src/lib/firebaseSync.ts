@@ -117,9 +117,9 @@ export async function syncChallengesToFirestore(userId: string, challenges: DayC
 
 /**
  * Uploads current local state to Firestore for a newly logged-in user if Firestore has no data.
+ * Optimized with batch writes to eliminate latency and network stalls.
  */
 export async function seedFirestoreFromLocalState(userId: string, state: HabitFlowState, scheduleItems: ScheduleItem[]) {
-  const habitsPath = `users/${userId}/habits`;
   try {
     const habitsSnap = await getDocs(collection(db, 'users', userId, 'habits'));
     
@@ -128,28 +128,45 @@ export async function seedFirestoreFromLocalState(userId: string, state: HabitFl
       return;
     }
 
-    // Seed habits
+    const batch = writeBatch(db);
+
+    // Seed habits in batch
     for (const habit of state.habits) {
-      await syncHabitToFirestore(userId, habit);
+      const habitRef = doc(db, 'users', userId, 'habits', habit.id);
+      batch.set(habitRef, cleanFirestoreData(habit));
     }
 
-    // Seed daily logs
+    // Seed daily logs in batch
     for (const logId of Object.keys(state.dailyLogs)) {
-      await syncDailyLogToFirestore(userId, state.dailyLogs[logId]);
+      const log = state.dailyLogs[logId];
+      if (log) {
+        const logRef = doc(db, 'users', userId, 'dailyLogs', log.id);
+        batch.set(logRef, cleanFirestoreData(log));
+      }
     }
 
-    // Seed schedule items
+    // Seed schedule items in batch
     for (const item of scheduleItems) {
-      await syncScheduleItemToFirestore(userId, item);
+      const schRef = doc(db, 'users', userId, 'scheduleItems', item.id);
+      batch.set(schRef, cleanFirestoreData(item));
     }
 
     // Seed user stats & settings
-    await syncUserStatsToFirestore(userId, state.userStats);
-    await syncAppSettingsToFirestore(userId, state.settings);
-    await syncChallengesToFirestore(userId, state.challenges);
+    const statsRef = doc(db, 'users', userId, 'userStats', 'main');
+    batch.set(statsRef, cleanFirestoreData(state.userStats));
 
+    const settingsRef = doc(db, 'users', userId, 'settings', 'main');
+    batch.set(settingsRef, cleanFirestoreData(state.settings));
+
+    // Seed challenges
+    for (const challenge of state.challenges) {
+      const chRef = doc(db, 'users', userId, 'challenges', challenge.id);
+      batch.set(chRef, cleanFirestoreData(challenge));
+    }
+
+    await batch.commit();
   } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, habitsPath);
+    console.warn('Silent notice: Seeding Firestore from local state skipped or partial:', error);
   }
 }
 
@@ -175,7 +192,7 @@ export function subscribeToUserData(
     const habits: Habit[] = snapshot.docs.map((d) => d.data() as Habit);
     onUpdate({ habits });
   }, (error) => {
-    handleFirestoreError(error, OperationType.GET, `users/${userId}/habits`);
+    console.warn('Habits listener subscription notice:', error?.message || error);
   });
   unsubscribers.push(unsubHabits);
 
@@ -189,7 +206,7 @@ export function subscribeToUserData(
     });
     onUpdate({ dailyLogs });
   }, (error) => {
-    handleFirestoreError(error, OperationType.GET, `users/${userId}/dailyLogs`);
+    console.warn('Daily logs listener subscription notice:', error?.message || error);
   });
   unsubscribers.push(unsubLogs);
 
@@ -199,7 +216,7 @@ export function subscribeToUserData(
     const scheduleItems: ScheduleItem[] = snapshot.docs.map((d) => d.data() as ScheduleItem);
     onUpdate({ scheduleItems });
   }, (error) => {
-    handleFirestoreError(error, OperationType.GET, `users/${userId}/scheduleItems`);
+    console.warn('Schedule items listener subscription notice:', error?.message || error);
   });
   unsubscribers.push(unsubSchedule);
 
@@ -210,7 +227,7 @@ export function subscribeToUserData(
       onUpdate({ userStats: snapshot.data() as UserStats });
     }
   }, (error) => {
-    handleFirestoreError(error, OperationType.GET, `users/${userId}/userStats/main`);
+    console.warn('User stats listener subscription notice:', error?.message || error);
   });
   unsubscribers.push(unsubStats);
 
@@ -221,7 +238,7 @@ export function subscribeToUserData(
       onUpdate({ settings: snapshot.data() as AppSettings });
     }
   }, (error) => {
-    handleFirestoreError(error, OperationType.GET, `users/${userId}/settings/main`);
+    console.warn('Settings listener subscription notice:', error?.message || error);
   });
   unsubscribers.push(unsubSettings);
 

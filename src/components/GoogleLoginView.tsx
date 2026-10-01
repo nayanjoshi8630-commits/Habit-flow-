@@ -13,7 +13,9 @@ import {
   ShieldCheck, 
   AlertCircle,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  Copy,
+  ExternalLink
 } from 'lucide-react';
 import { signInWithGoogle, User } from '../lib/firebase';
 
@@ -28,19 +30,45 @@ export default function GoogleLoginView({
 }: GoogleLoginViewProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isUnauthorizedDomain, setIsUnauthorizedDomain] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
+
+  const handleCopyHost = () => {
+    if (navigator.clipboard && currentHost) {
+      navigator.clipboard.writeText(currentHost);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     setErrorMsg(null);
+    setIsUnauthorizedDomain(false);
     setIsLoading(true);
+
+    // Timeout safety guard so user is never stuck in infinite loading
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('SIGNIN_TIMEOUT'));
+      }, 45000);
+    });
+
     try {
-      const result = await signInWithGoogle();
+      const result = await Promise.race([signInWithGoogle(), timeoutPromise]);
       if (result && result.user) {
         onLoginSuccess(result.user);
       }
     } catch (err: any) {
       console.error('Google Sign In Error:', err);
-      if (err?.code === 'auth/popup-blocked') {
-        setErrorMsg('The sign-in popup was blocked by your browser. Please enable popups for this site and try again.');
+      if (err?.code === 'auth/unauthorized-domain') {
+        setIsUnauthorizedDomain(true);
+        setErrorMsg('Domain not authorized in Firebase Console.');
+      } else if (err?.code === 'auth/popup-blocked') {
+        setErrorMsg('The sign-in popup was blocked by your browser. Please allow popups for this site and try again.');
+      } else if (err?.message === 'SIGNIN_TIMEOUT') {
+        setErrorMsg('Sign-in window timed out or was closed in the background. Please try again or continue as guest.');
       } else if (err?.code === 'auth/network-request-failed') {
         setErrorMsg('Network error. Please check your internet connection and try again.');
       } else if (err?.message) {
@@ -123,12 +151,50 @@ export default function GoogleLoginView({
         </div>
 
         {/* Error notification banner */}
-        {errorMsg && (
+        {isUnauthorizedDomain ? (
+          <div className="w-full mb-5 p-3.5 rounded-2xl bg-amber-950/70 border border-amber-500/40 text-left animate-fadeIn shadow-lg">
+            <div className="flex items-center gap-2 text-amber-300 font-bold text-xs mb-1.5">
+              <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+              <span>Firebase: Add Authorized Domain</span>
+            </div>
+            <p className="text-[11px] text-amber-200/90 leading-relaxed mb-2.5">
+              Firebase Authentication requires your current preview domain to be registered in your Firebase project (<strong className="text-white">habitflow-hakari-fd9b9</strong>).
+            </p>
+            
+            <div className="p-2 rounded-xl bg-black/40 border border-amber-500/20 flex items-center justify-between gap-2 mb-3">
+              <span className="text-[10px] font-mono text-amber-100 truncate select-all">{currentHost}</span>
+              <button
+                type="button"
+                onClick={handleCopyHost}
+                className="px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[10px] font-bold flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
+              >
+                {copied ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                <span>{copied ? 'Copied' : 'Copy'}</span>
+              </button>
+            </div>
+
+            <div className="text-[10px] text-amber-300/80 space-y-1">
+              <div>1. Go to <strong>Firebase Console → Authentication → Settings</strong></div>
+              <div>2. In <strong>Authorized domains</strong>, click <strong>Add domain</strong> and paste this host</div>
+            </div>
+
+            <div className="mt-3 pt-2.5 border-t border-amber-500/20 flex items-center justify-between">
+              <span className="text-[10px] text-amber-200/70">Or continue locally now:</span>
+              <button
+                type="button"
+                onClick={onContinueAsGuest}
+                className="text-[11px] font-black text-amber-300 hover:text-white underline cursor-pointer"
+              >
+                Use Guest Mode →
+              </button>
+            </div>
+          </div>
+        ) : errorMsg ? (
           <div className="w-full mb-4 p-3 rounded-2xl bg-rose-950/60 border border-rose-800/80 text-rose-200 text-xs flex items-start gap-2 text-left animate-fadeIn">
             <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
             <span className="flex-1">{errorMsg}</span>
           </div>
-        )}
+        ) : null}
 
         {/* Primary Action: Google Sign In Button */}
         <button

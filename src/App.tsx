@@ -21,7 +21,11 @@ import {
   Sun,
   Moon,
   LogOut,
-  LogIn
+  LogIn,
+  AlertCircle,
+  Copy,
+  CheckCircle2,
+  ExternalLink
 } from 'lucide-react';
 
 import { onAuthStateChanged, auth, signInWithGoogle, logOut, User } from './lib/firebase';
@@ -141,14 +145,27 @@ export default function App() {
   const [snoozedAlarms, setSnoozedAlarms] = useState<{ [id: string]: number }>({});
   const lastAlarmCheckedMinute = useRef<string>('');
 
-  // Save Schedule Items to LocalStorage and Firestore
+  // Firebase unauthorized-domain dialog state
+  const [showDomainModal, setShowDomainModal] = useState(false);
+  const [copiedHost, setCopiedHost] = useState(false);
+
+  // Ref for debouncing cloud writes
+  const cloudSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scheduleSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Save Schedule Items to LocalStorage and Firestore (debounced for ultra-low latency)
   const saveScheduleItems = (items: ScheduleItem[]) => {
     setScheduleItems(items);
     localStorage.setItem('habitflow_schedule_items', JSON.stringify(items));
     if (currentUser) {
-      for (const item of items) {
-        syncScheduleItemToFirestore(currentUser.uid, item);
+      if (scheduleSyncTimeoutRef.current) {
+        clearTimeout(scheduleSyncTimeoutRef.current);
       }
+      scheduleSyncTimeoutRef.current = setTimeout(() => {
+        for (const item of items) {
+          syncScheduleItemToFirestore(currentUser.uid, item);
+        }
+      }, 400);
     }
   };
 
@@ -173,19 +190,55 @@ export default function App() {
       console.error('Initial Firestore sync error:', err);
     });
 
-    // Subscribe to live cloud updates
+    // Subscribe to live cloud updates without triggering unnecessary re-renders
     const unsub = subscribeToUserData(currentUser.uid, (data) => {
       setState((prev) => {
+        let changed = false;
         const next = { ...prev };
-        if (data.habits && data.habits.length > 0) next.habits = data.habits;
-        if (data.dailyLogs && Object.keys(data.dailyLogs).length > 0) next.dailyLogs = data.dailyLogs;
-        if (data.userStats) next.userStats = { ...prev.userStats, ...data.userStats };
-        if (data.settings) next.settings = { ...prev.settings, ...data.settings };
-        if (data.challenges && data.challenges.length > 0) next.challenges = data.challenges;
-        return next;
+
+        if (data.habits && data.habits.length > 0) {
+          if (JSON.stringify(prev.habits) !== JSON.stringify(data.habits)) {
+            next.habits = data.habits;
+            changed = true;
+          }
+        }
+        if (data.dailyLogs && Object.keys(data.dailyLogs).length > 0) {
+          if (JSON.stringify(prev.dailyLogs) !== JSON.stringify(data.dailyLogs)) {
+            next.dailyLogs = data.dailyLogs;
+            changed = true;
+          }
+        }
+        if (data.userStats) {
+          const mergedStats = { ...prev.userStats, ...data.userStats };
+          if (JSON.stringify(prev.userStats) !== JSON.stringify(mergedStats)) {
+            next.userStats = mergedStats;
+            changed = true;
+          }
+        }
+        if (data.settings) {
+          const mergedSettings = { ...prev.settings, ...data.settings };
+          if (JSON.stringify(prev.settings) !== JSON.stringify(mergedSettings)) {
+            next.settings = mergedSettings;
+            changed = true;
+          }
+        }
+        if (data.challenges && data.challenges.length > 0) {
+          if (JSON.stringify(prev.challenges) !== JSON.stringify(data.challenges)) {
+            next.challenges = data.challenges;
+            changed = true;
+          }
+        }
+
+        return changed ? next : prev;
       });
+
       if (data.scheduleItems && data.scheduleItems.length > 0) {
-        setScheduleItems(data.scheduleItems);
+        setScheduleItems((prev) => {
+          if (JSON.stringify(prev) !== JSON.stringify(data.scheduleItems)) {
+            return data.scheduleItems!;
+          }
+          return prev;
+        });
       }
     });
 
@@ -214,13 +267,18 @@ export default function App() {
     }
   }, []);
 
-  // 2. Synchronize to LocalStorage & Firestore
+  // 2. Synchronize to LocalStorage & Firestore (local immediate, cloud debounced for zero latency)
   const saveState = (newState: HabitFlowState) => {
     setState(newState);
     localStorage.setItem('habitflow_state', JSON.stringify(newState));
     if (currentUser) {
-      syncUserStatsToFirestore(currentUser.uid, newState.userStats);
-      syncAppSettingsToFirestore(currentUser.uid, newState.settings);
+      if (cloudSyncTimeoutRef.current) {
+        clearTimeout(cloudSyncTimeoutRef.current);
+      }
+      cloudSyncTimeoutRef.current = setTimeout(() => {
+        syncUserStatsToFirestore(currentUser.uid, newState.userStats);
+        syncAppSettingsToFirestore(currentUser.uid, newState.settings);
+      }, 500);
     }
   };
 
@@ -634,8 +692,11 @@ export default function App() {
         setGuestMode(false);
         localStorage.removeItem('habitflow_guest_mode');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Sign-in error:', err);
+      if (err?.code === 'auth/unauthorized-domain') {
+        setShowDomainModal(true);
+      }
     }
   };
 
@@ -646,29 +707,64 @@ export default function App() {
     scheduleItems: ScheduleItem[];
     theme?: 'light' | 'dark';
   }) => {
-    // 1. Update State & LocalStorage
-    saveState({
-      ...state,
-      habits: changes.habits,
-      dailyLogs: changes.dailyLogs,
-      settings: changes.theme ? { ...state.settings, theme: changes.theme } : state.settings,
+    // 1. Update State & LocalStorage immediately with functional update
+    setState((prev) => {
+      const next: HabitFlowState = {
+        ...prev,
+        habits: changes.habits,
+        dailyLogs: changes.dailyLogs,
+        settings: changes.theme ? { ...prev.settings, theme: changes.theme } : prev.settings,
+      };
+      localStorage.setItem('habitflow_state', JSON.stringify(next));
+      return next;
     });
+
     saveScheduleItems(changes.scheduleItems);
+
+    if (changes.theme) {
+      document.documentElement.classList.toggle('dark', changes.theme === 'dark');
+    }
 
     // 2. Cloud Firestore Sync for logged in user
     if (currentUser) {
+      // Habits: sync added/updated
       for (const h of changes.habits) {
         syncHabitToFirestore(currentUser.uid, h);
       }
-      for (const logId in changes.dailyLogs) {
-        syncDailyLogToFirestore(currentUser.uid, changes.dailyLogs[logId]);
+      // Habits: delete removed
+      const newHabitIds = new Set(changes.habits.map((h) => h.id));
+      for (const oldHabit of state.habits) {
+        if (!newHabitIds.has(oldHabit.id)) {
+          deleteHabitFromFirestore(currentUser.uid, oldHabit.id);
+        }
       }
+
+      // Daily Logs: sync updated
+      for (const logId in changes.dailyLogs) {
+        if (state.dailyLogs[logId] !== changes.dailyLogs[logId]) {
+          syncDailyLogToFirestore(currentUser.uid, changes.dailyLogs[logId]);
+        }
+      }
+
+      // Schedule Items: sync added/updated
       for (const s of changes.scheduleItems) {
         syncScheduleItemToFirestore(currentUser.uid, s);
+      }
+      // Schedule Items: delete removed
+      const newScheduleIds = new Set(changes.scheduleItems.map((s) => s.id));
+      for (const oldSch of scheduleItems) {
+        if (!newScheduleIds.has(oldSch.id)) {
+          deleteScheduleItemFromFirestore(currentUser.uid, oldSch.id);
+        }
       }
     }
 
     playConfetti();
+  };
+
+  const handleUpdateScheduleItem = (updatedItem: ScheduleItem) => {
+    const updated = scheduleItems.map((item) => (item.id === updatedItem.id ? updatedItem : item));
+    saveScheduleItems(updated);
   };
 
   const handleUpdateScheduleItemSound = (id: string, sound: string) => {
@@ -954,6 +1050,7 @@ export default function App() {
             habits={state.habits}
             categoriesList={state.userStats.customCategories}
             onAddScheduleItem={handleAddScheduleItem}
+            onUpdateScheduleItem={handleUpdateScheduleItem}
             onSetWholeSchedule={handleSetWholeSchedule}
             onAppendSchedule={handleAppendSchedule}
             onToggleScheduleAlarm={handleToggleScheduleAlarm}
@@ -979,6 +1076,15 @@ export default function App() {
             }}
             weekStartMonday={state.settings.weekStartMonday}
             categoriesList={state.userStats.customCategories}
+            availableCategories={state.userStats.customCategories}
+            onNavigateToTab={(tab) => setActiveTab(tab)}
+            onThemeSwitch={(thm) => {
+              saveState({
+                ...state,
+                settings: { ...state.settings, theme: thm },
+              });
+              document.documentElement.classList.toggle('dark', thm === 'dark');
+            }}
           />
         )}
 
@@ -1179,6 +1285,76 @@ export default function App() {
           </button>
         </div>
       </nav>
+
+      {/* Unauthorized Domain Guide Modal */}
+      {showDomainModal && (
+        <div 
+          id="unauthorized-domain-modal" 
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowDomainModal(false)}
+        >
+          <div 
+            className="bg-slate-900 border border-slate-750 rounded-3xl p-6 max-w-md w-full shadow-2xl text-left animate-fadeIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2.5 text-amber-400 mb-3">
+              <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-white">Firebase Domain Authorization</h3>
+                <span className="text-[11px] text-amber-400/90 font-medium">1-minute setup required</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed mb-4">
+              Firebase Authentication requires your current preview domain to be registered in your Firebase project (<strong>habitflow-hakari-fd9b9</strong>) before Google Sign-In popups can be processed.
+            </p>
+
+            <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 mb-4">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                Domain to Authorize:
+              </span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-mono text-indigo-300 break-all select-all">
+                  {typeof window !== 'undefined' ? window.location.hostname : ''}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (navigator.clipboard) {
+                      navigator.clipboard.writeText(window.location.hostname);
+                      setCopiedHost(true);
+                      setTimeout(() => setCopiedHost(false), 2500);
+                    }
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
+                >
+                  {copiedHost ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedHost ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 text-xs text-slate-400 mb-5 bg-slate-950/60 p-3 rounded-xl border border-slate-850">
+              <p className="text-[11px] font-bold text-slate-200 mb-1">Steps to authorize:</p>
+              <p>1. Open <strong className="text-slate-200">Firebase Console</strong> → select <strong>habitflow-hakari-fd9b9</strong></p>
+              <p>2. Click <strong className="text-slate-200">Build</strong> → <strong className="text-slate-200">Authentication</strong> → <strong className="text-slate-200">Settings</strong> tab</p>
+              <p>3. Under <strong className="text-slate-200">Authorized domains</strong>, click <strong>Add domain</strong> and paste</p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDomainModal(false)}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Close & Continue Locally
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

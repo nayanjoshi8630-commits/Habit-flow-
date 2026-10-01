@@ -30,7 +30,8 @@ import {
   ChevronUp,
   Square,
   Music,
-  Smartphone
+  Smartphone,
+  Edit3
 } from 'lucide-react';
 import { ScheduleItem, Habit } from '../types';
 import { SoundCatalog, playAlarmSound } from '../utils/audio';
@@ -47,6 +48,7 @@ interface ScheduleViewProps {
   habits: Habit[];
   categoriesList: string[];
   onAddScheduleItem: (item: Omit<ScheduleItem, 'id'>) => void;
+  onUpdateScheduleItem?: (item: ScheduleItem) => void;
   onSetWholeSchedule: (newItems: ScheduleItem[]) => void;
   onAppendSchedule: (newItems: ScheduleItem[]) => void;
   onToggleScheduleAlarm: (id: string) => void;
@@ -59,6 +61,7 @@ export default function ScheduleView({
   habits,
   categoriesList,
   onAddScheduleItem,
+  onUpdateScheduleItem,
   onSetWholeSchedule,
   onAppendSchedule,
   onToggleScheduleAlarm,
@@ -72,13 +75,75 @@ export default function ScheduleView({
   const [selectedSoundTargetItemId, setSelectedSoundTargetItemId] = useState<string | null>(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showTimePickerModal, setShowTimePickerModal] = useState(false);
+  const [timePickerTarget, setTimePickerTarget] = useState<'create' | 'edit'>('create');
+  const [categoryTarget, setCategoryTarget] = useState<'create' | 'edit'>('create');
+  const [soundTarget, setSoundTarget] = useState<'create' | 'edit' | 'item'>('create');
+
+  // Create state
   const [title, setTitle] = useState('');
   const [time, setTime] = useState('08:00');
   const [category, setCategory] = useState(categoriesList[0] || 'Mind');
   const [emoji, setEmoji] = useState('⏰');
   const [alarmSound, setAlarmSound] = useState('soft_chime');
-  const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]); // All days by default
+  const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [linkedHabitId, setLinkedHabitId] = useState<string>('');
+
+  // Edit schedule state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<ScheduleItem | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editTime, setEditTime] = useState('08:00');
+  const [editCategory, setEditCategory] = useState('Mind');
+  const [editEmoji, setEditEmoji] = useState('⏰');
+  const [editAlarmSound, setEditAlarmSound] = useState('soft_chime');
+  const [editDays, setEditDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+  const [editAlarmEnabled, setEditAlarmEnabled] = useState(true);
+  const [editLinkedHabitId, setEditLinkedHabitId] = useState<string>('');
+
+  const handleStartEdit = (item: ScheduleItem) => {
+    setEditingItem(item);
+    setEditTitle(item.title);
+    setEditTime(item.time);
+    setEditCategory(item.category || categoriesList[0] || 'Mind');
+    setEditEmoji(item.emoji || '⏰');
+    setEditAlarmSound(item.alarmSound || 'soft_chime');
+    setEditDays(item.days || [0, 1, 2, 3, 4, 5, 6]);
+    setEditAlarmEnabled(item.alarmEnabled ?? true);
+    setEditLinkedHabitId(item.habitId || '');
+    setShowEditModal(true);
+  };
+
+  const handleEditDayToggle = (dayIndex: number) => {
+    if (editDays.includes(dayIndex)) {
+      if (editDays.length === 1) return;
+      setEditDays(editDays.filter((d) => d !== dayIndex));
+    } else {
+      setEditDays([...editDays, dayIndex].sort());
+    }
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem || !editTitle.trim()) return;
+
+    const updated: ScheduleItem = {
+      ...editingItem,
+      title: editTitle.trim(),
+      time: editTime,
+      category: editCategory,
+      emoji: editEmoji,
+      alarmSound: editAlarmSound,
+      days: editDays,
+      alarmEnabled: editAlarmEnabled,
+      habitId: editLinkedHabitId || undefined,
+    };
+
+    if (typeof onUpdateScheduleItem === 'function') {
+      onUpdateScheduleItem(updated);
+    }
+    setShowEditModal(false);
+    setEditingItem(null);
+  };
 
   // Compact section toggles
   const [showAiTools, setShowAiTools] = useState(false);
@@ -507,8 +572,12 @@ export default function ScheduleView({
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2 mt-0.5 min-w-0">
-                      <span className="text-[12px] font-extrabold text-slate-100 truncate">{item.title}</span>
+                    <div 
+                      onClick={() => handleStartEdit(item)}
+                      className="flex items-center gap-2 mt-0.5 min-w-0 cursor-pointer group"
+                      title="Click to edit schedule item"
+                    >
+                      <span className="text-[12px] font-extrabold text-slate-100 truncate group-hover:text-indigo-300 transition-colors">{item.title}</span>
                       
                       {/* Compact Active Day Badges */}
                       <div className="hidden sm:flex items-center gap-0.5 shrink-0 ml-1">
@@ -551,6 +620,7 @@ export default function ScheduleView({
                     type="button"
                     onClick={() => {
                       setSelectedSoundTargetItemId(item.id);
+                      setSoundTarget('item');
                       setShowSoundModal(true);
                     }}
                     className="schedule-device-tune-btn p-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 hover:text-indigo-400 hover:border-indigo-500/40 transition-colors cursor-pointer hidden sm:flex items-center justify-center"
@@ -576,6 +646,17 @@ export default function ScheduleView({
                     ) : (
                       <BellOff className="w-3.5 h-3.5" />
                     )}
+                  </button>
+
+                  {/* Edit Schedule Item button */}
+                  <button
+                    id={`edit-schedule-${item.id}`}
+                    type="button"
+                    onClick={() => handleStartEdit(item)}
+                    className="schedule-edit-btn p-1.5 rounded-xl bg-slate-950 border border-slate-850 text-slate-400 hover:text-indigo-400 hover:border-indigo-500/40 transition-colors cursor-pointer"
+                    title="Edit Schedule (Title, Time, Sound, Days)"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
                   </button>
 
                   {/* Delete item */}
@@ -740,15 +821,201 @@ export default function ScheduleView({
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="flex-1 py-2.5 bg-slate-950 border border-slate-800 text-slate-400 font-bold text-xs rounded-2xl hover:text-white"
+                className="flex-1 py-2.5 bg-slate-950 border border-slate-800 text-slate-400 font-bold text-xs rounded-2xl hover:text-white cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-indigo-600/20"
+                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-indigo-600/20 cursor-pointer"
               >
                 Save Schedule
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Edit Schedule Modal */}
+      {showEditModal && editingItem && (
+        <div id="edit-schedule-modal-backdrop" className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <form
+            onSubmit={handleSaveEdit}
+            className="bg-slate-900 border border-indigo-500/30 rounded-3xl p-6 w-full max-w-md flex flex-col gap-4 shadow-2xl animate-fadeIn"
+          >
+            <div className="flex justify-between items-center border-b border-slate-850 pb-3">
+              <h3 className="text-sm font-black text-white flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-indigo-400" /> Edit Schedule Routine
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="text-slate-500 hover:text-white text-xs font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Title */}
+            <div>
+              <label className="text-[10px] uppercase font-black text-slate-400 block mb-1">Title</label>
+              <input
+                type="text"
+                required
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-3.5 py-2 text-xs font-bold text-white outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            {/* Time & Category */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] uppercase font-black text-slate-400 block mb-1">Time</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTimePickerTarget('edit');
+                    setShowTimePickerModal(true);
+                  }}
+                  className="w-full bg-slate-950 border border-slate-800 hover:border-indigo-500/50 rounded-2xl px-3.5 py-2 text-xs font-bold text-indigo-300 flex items-center justify-between transition-all cursor-pointer shadow-inner"
+                >
+                  <span className="flex items-center gap-1.5 truncate">
+                    <Clock className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    <span>{formatTime12h(editTime)}</span>
+                  </span>
+                </button>
+              </div>
+
+              <div>
+                <label className="text-[10px] uppercase font-black text-slate-400 block mb-1">Category</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategoryTarget('edit');
+                    setShowCategoryModal(true);
+                  }}
+                  className="w-full bg-slate-950 border border-slate-800 hover:border-indigo-500/50 rounded-2xl px-3.5 py-2 text-xs font-bold text-white flex items-center justify-between transition-all cursor-pointer shadow-inner"
+                >
+                  <span className="truncate">{editCategory}</span>
+                  <Tag className="w-3.5 h-3.5 text-indigo-400 shrink-0 ml-1" />
+                </button>
+              </div>
+            </div>
+
+            {/* Emoji & Alarm Chime */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] uppercase font-black text-slate-400 block mb-1">Icon</label>
+                <div className="flex gap-1.5 overflow-x-auto p-1 bg-slate-950 border border-slate-800 rounded-2xl scrollbar-none">
+                  {PRESET_EMOJIS.slice(0, 6).map((e) => (
+                    <button
+                      key={e}
+                      type="button"
+                      onClick={() => setEditEmoji(e)}
+                      className={`p-1.5 rounded-xl text-sm transition-all cursor-pointer ${
+                        editEmoji === e ? 'bg-indigo-600 text-white shadow' : 'hover:bg-slate-850'
+                      }`}
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] uppercase font-black text-slate-400 block mb-1">Alarm Chime</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSoundTarget('edit');
+                    setShowSoundModal(true);
+                  }}
+                  className="w-full bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-2xl px-3 py-2 text-xs font-bold text-white flex items-center justify-between transition-all cursor-pointer shadow-inner"
+                >
+                  <span className="flex items-center gap-1 truncate">
+                    <span>{SoundCatalog.OPTIONS.find((s) => s.id === editAlarmSound)?.emoji || '🎵'}</span>
+                    <span className="truncate">{SoundCatalog.OPTIONS.find((s) => s.id === editAlarmSound)?.name || 'Select Tune'}</span>
+                  </span>
+                  <Bell className="w-3.5 h-3.5 text-amber-400 shrink-0 ml-1" />
+                </button>
+              </div>
+            </div>
+
+            {/* Active Repeat Days */}
+            <div>
+              <label className="text-[10px] uppercase font-black text-slate-400 block mb-1.5">Repeat Days</label>
+              <div className="flex justify-between gap-1">
+                {dayNames.map((dName, idx) => {
+                  const selected = editDays.includes(idx);
+                  return (
+                    <button
+                      key={dName}
+                      type="button"
+                      onClick={() => handleEditDayToggle(idx)}
+                      className={`flex-1 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all cursor-pointer ${
+                        selected
+                          ? 'bg-indigo-600 text-white shadow shadow-indigo-600/30'
+                          : 'bg-slate-950 border border-slate-800 text-slate-500'
+                      }`}
+                    >
+                      {dName}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Alarm Enabled Switch */}
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-950 border border-slate-800">
+              <span className="text-xs font-bold text-slate-200 flex items-center gap-2">
+                <Bell className="w-3.5 h-3.5 text-amber-400" /> Sound Alarm at Scheduled Time
+              </span>
+              <button
+                type="button"
+                onClick={() => setEditAlarmEnabled(!editAlarmEnabled)}
+                className={`p-1.5 px-3 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                  editAlarmEnabled
+                    ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-400'
+                    : 'bg-slate-900 border-slate-800 text-slate-500'
+                }`}
+              >
+                {editAlarmEnabled ? 'Enabled' : 'Muted'}
+              </button>
+            </div>
+
+            {/* Link to Habit */}
+            {habits.length > 0 && (
+              <div>
+                <label className="text-[10px] uppercase font-black text-slate-400 block mb-1">Linked Habit</label>
+                <select
+                  value={editLinkedHabitId}
+                  onChange={(e) => setEditLinkedHabitId(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-3.5 py-2 text-xs font-bold text-slate-300 outline-none"
+                >
+                  <option value="">-- No linked habit --</option>
+                  {habits.map((h) => (
+                    <option key={h.id} value={h.id}>
+                      {h.emoji} {h.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="flex gap-2.5 mt-2">
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="flex-1 py-2.5 bg-slate-950 border border-slate-800 text-slate-400 font-bold text-xs rounded-2xl hover:text-white cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-indigo-600/20 cursor-pointer"
+              >
+                Update Schedule
               </button>
             </div>
           </form>
@@ -761,11 +1028,15 @@ export default function ScheduleView({
           selectedSoundId={
             selectedSoundTargetItemId
               ? (scheduleItems.find((s) => s.id === selectedSoundTargetItemId)?.alarmSound || 'soft_chime')
+              : soundTarget === 'edit'
+              ? editAlarmSound
               : alarmSound
           }
           onSelectSound={(snd) => {
             if (selectedSoundTargetItemId) {
               onUpdateScheduleItemSound(selectedSoundTargetItemId, snd);
+            } else if (soundTarget === 'edit') {
+              setEditAlarmSound(snd);
             } else {
               setAlarmSound(snd);
             }
@@ -781,17 +1052,29 @@ export default function ScheduleView({
 
       {showCategoryModal && (
         <CategorySelectorModal
-          selectedCategory={category}
+          selectedCategory={categoryTarget === 'edit' ? editCategory : category}
           categoriesList={categoriesList}
-          onSelectCategory={(cat) => setCategory(cat)}
+          onSelectCategory={(cat) => {
+            if (categoryTarget === 'edit') {
+              setEditCategory(cat);
+            } else {
+              setCategory(cat);
+            }
+          }}
           onClose={() => setShowCategoryModal(false)}
         />
       )}
 
       {showTimePickerModal && (
         <TimePickerModal
-          initialTime={time}
-          onSelectTime={(t24) => setTime(t24)}
+          initialTime={timePickerTarget === 'edit' ? editTime : time}
+          onSelectTime={(t24) => {
+            if (timePickerTarget === 'edit') {
+              setEditTime(t24);
+            } else {
+              setTime(t24);
+            }
+          }}
           onClose={() => setShowTimePickerModal(false)}
         />
       )}
